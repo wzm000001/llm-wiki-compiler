@@ -35,25 +35,25 @@ Called by `/fetch-bookmarks x`. Walks the user through: checking prerequisites, 
 
 ## Step 4: Ensure markdown export
 
-- Field Theory writes markdown into nested subdirectories under `~/.ft-bookmarks/md/`. Each bookmark becomes its own `.md` file under `~/.ft-bookmarks/md/bookmarks/`. (Future `ft classify` runs may add `~/.ft-bookmarks/md/categories/` and similar.)
+- Field Theory writes markdown into nested subdirectories under `~/.fieldtheory/library/`. Each bookmark becomes its own `.md` file under `~/.fieldtheory/library/bookmarks/`. (Future `ft classify` runs may add `~/.fieldtheory/library/categories/` and similar.)
 - `ft sync` does NOT export markdown. After sync, always run `ft md` to write/refresh the markdown export.
 - Run `ft md`. Surface its output verbatim — it prints a per-bookmark progress count.
-- Verify the export by checking `~/.ft-bookmarks/md/bookmarks/` exists and is non-empty.
+- Verify the export by checking `~/.fieldtheory/library/bookmarks/` exists and is non-empty.
 - If still empty after `ft md`, stop with an error pointing to the Field Theory CLI repo for troubleshooting.
 
 ## Step 5: Wire into `.wiki-compiler.json`
 
 - Read `.wiki-compiler.json` from the current project root (or nearest parent). If not found, tell the user to run `/wiki-init` first, then stop.
-- Target source path: `~/.ft-bookmarks/md/bookmarks/` (the nested directory containing the actual tweet markdown files — narrower than `~/.ft-bookmarks/md/` so we don't accidentally ingest category index pages later).
+- Target source path: `~/.fieldtheory/library/bookmarks/` (the nested directory containing the actual tweet markdown files — narrower than `~/.fieldtheory/library/` so we don't accidentally ingest category index pages later).
 - If any entry in `sources[]` already points at that directory (tilde or expanded form), skip this step.
 - Otherwise, show the user:
   ```
-  Add ~/.ft-bookmarks/md/bookmarks/ to your wiki sources in .wiki-compiler.json? (y/n)
+  Add ~/.fieldtheory/library/bookmarks/ to your wiki sources in .wiki-compiler.json? (y/n)
   ```
 - On **yes**: append a new entry to `sources[]`:
   ```json
   {
-    "path": "~/.ft-bookmarks/md/bookmarks/",
+    "path": "~/.fieldtheory/library/bookmarks/",
     "description": "X bookmarks (synced via Field Theory CLI)"
   }
   ```
@@ -62,10 +62,10 @@ Called by `/fetch-bookmarks x`. Walks the user through: checking prerequisites, 
 
 ## Step 6: Suggest compile
 
-Count the markdown files in `~/.ft-bookmarks/md/` and print:
+Count the markdown files in `~/.fieldtheory/library/` and print:
 
 ```
-Fetched N bookmark file(s) into ~/.ft-bookmarks/md/.
+Fetched N bookmark file(s) into ~/.fieldtheory/library/.
 Run /wiki-compile to synthesize them into topic articles.
 ```
 
@@ -77,7 +77,7 @@ This adapter supports auto-sync via `/fetch-bookmarks schedule x`.
 
 - **sync_command:** `ft sync && ft md`
 - **default_cadence:** daily, 03:00 local time (launchd `StartCalendarInterval`: Hour=3, Minute=0)
-- **log_path:** `~/.ft-bookmarks/autosync.log`
+- **log_path:** `~/.fieldtheory/autosync.log`
 
 The sync_command is safe to run while the user is not at the keyboard — fieldtheory reads cookies from the already-logged-in browser profile and doesn't require any interactive input after the initial manual run. If the user's browser is closed, `ft sync` may still work (cookies persist on disk) but failures are silent; check `log_path` the next day to confirm.
 

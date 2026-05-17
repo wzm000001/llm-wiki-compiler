@@ -62,7 +62,7 @@ More adapters planned: readwise, pocket, github-stars.
 - Print: next scheduled run time, log path, and the uninstall command. Example:
   ```
   ✓ Auto-sync installed. Next run: tomorrow 03:00 local.
-  Log: ~/.ft-bookmarks/autosync.log
+  Log: ~/.fieldtheory/autosync.log
   Uninstall: /fetch-bookmarks schedule x --uninstall
   ```
 - **Linux / WSL:** Don't auto-install. Print a crontab snippet the user can paste:

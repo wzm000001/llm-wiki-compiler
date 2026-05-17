@@ -335,7 +335,7 @@ First run walks you through:
 1. Checking that Node.js 20+ is installed
 2. Installing [Field Theory CLI](https://github.com/afar1/fieldtheory-cli) (MIT-licensed, free) globally via npm — one consent prompt
 3. Syncing your X bookmarks using Chrome cookie auth (no X API key needed)
-4. Adding `~/.ft-bookmarks/md/` to your `.wiki-compiler.json` sources
+4. Adding `~/.fieldtheory/library/` to your `.wiki-compiler.json` sources
 
 After that, `/fetch-bookmarks x` just resyncs. Run `/wiki-compile` whenever you want bookmarks folded into topic articles.
 

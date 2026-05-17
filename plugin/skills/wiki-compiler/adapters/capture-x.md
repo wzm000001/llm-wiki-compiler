@@ -14,7 +14,7 @@ For full bookmark-library sync, use `/fetch-bookmarks x`, which delegates to Fie
 Try available approaches in this order:
 
 1. Browser/web extraction of the public post/thread.
-2. Field Theory CLI output if the post already exists under `~/.ft-bookmarks/md/bookmarks/`.
+2. Field Theory CLI output if the post already exists under `~/.fieldtheory/library/bookmarks/`.
 3. User-pasted post/thread text if the content is private, deleted, or blocked.
 
 Preserve:
