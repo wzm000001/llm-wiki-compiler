@@ -183,7 +183,7 @@ For EACH topic that has new or changed source files:
    - **Timeline / Key Decisions**: order bullets reverse-chronologically (newest first). Prefix each bullet with its date. Prefix stale bullets with `⚠️ [YYYY-MM, may be stale]` so the reader can skim past them.
    - **Per-section `[as of YYYY-MM]` tag**: when a section rests primarily on aging sources (older than the topic's aging threshold), add `[as of YYYY-MM]` next to the coverage tag, where YYYY-MM is the median source date.
    - **Conflicting sources**: when two sources disagree and one is materially newer (>12 months for time-sensitive, >24 months for stable), prefer the newer synthesis and note the shift explicitly in Key Decisions: `"YYYY-MM: {earlier framing} → {new framing}"`. Attribute both to their source files.
-   - **Bookmark-dominated topics** (≥50% of sources from external bookmark directories like `~/.ft-bookmarks/md/bookmarks/`): always annotate bullets with inline dates, and mention the dominant date range in Summary. Tweets are snapshots of a moment — never present them as timeless.
+   - **Bookmark-dominated topics** (≥50% of sources from external bookmark directories like `~/.fieldtheory/library/bookmarks/`): always annotate bullets with inline dates, and mention the dominant date range in Summary. Tweets are snapshots of a moment — never present them as timeless.
 
    Do NOT delete stale content. Flag, re-order, or annotate. The wiki is a time-series artifact; old entries have historical value even when no longer current.
 
