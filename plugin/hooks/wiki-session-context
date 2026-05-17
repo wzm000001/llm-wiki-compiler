@@ -44,6 +44,7 @@ fi
 
 topic_count="$(STATE_FILE="$state_file" node -e "const s=require(process.env.STATE_FILE); console.log((s.topics||[]).length)" 2>/dev/null || echo "?")"
 last_compiled="$(STATE_FILE="$state_file" node -e "const s=require(process.env.STATE_FILE); console.log(s.last_compiled || 'unknown')" 2>/dev/null || echo "unknown")"
+last_compiled_at="$(STATE_FILE="$state_file" node -e "const s=require(process.env.STATE_FILE); console.log(s.last_compiled_at || '')" 2>/dev/null || echo "")"
 auto_update="$(read_config "console.log(c.auto_update || 'off')" || echo "off")"
 
 stale_warning=""
@@ -62,7 +63,15 @@ if [ "$auto_update" = "prompt" ] && [ "$last_compiled" != "unknown" ]; then
     fi
     if [ -d "$resolved_path" ]; then
       ref_file="$(mktemp)"
-      touch -t "$(echo "$last_compiled" | sed 's/-//g')0000" "$ref_file" 2>/dev/null || true
+      # Prefer precise ISO timestamp (last_compiled_at) to avoid overcounting files
+      # synced after midnight of last_compiled date. Falls back to legacy midnight-of-date
+      # behavior if last_compiled_at is missing (old state files).
+      if [ -n "$last_compiled_at" ]; then
+        touch -d "$last_compiled_at" "$ref_file" 2>/dev/null || \
+          touch -t "$(echo "$last_compiled" | sed 's/-//g')0000" "$ref_file" 2>/dev/null || true
+      else
+        touch -t "$(echo "$last_compiled" | sed 's/-//g')0000" "$ref_file" 2>/dev/null || true
+      fi
       if [ "$wiki_mode" = "codebase" ]; then
         count="$(find "$resolved_path" \
           \( -name "README.md" -o -name "CLAUDE.md" -o -name "AGENTS.md" -o -name "ARCHITECTURE.md" \
