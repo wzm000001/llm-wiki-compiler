@@ -50,30 +50,47 @@ Before running, read `.wiki-compiler.json` from the project root to get:
 
 ## Phase 1: Scan Sources
 
+**Detection mechanism (v2.2+):** File-list diff against `processed_sources`, not timestamp-only.
+
+The legacy detection used `find -newer last_compiled` which silently drops files whose mtime is older than `last_compiled` — e.g., bookmarks synced into a source directory between two compile runs whose first compile skipped them get permanently orphaned. The fix: maintain a `processed_sources` registry in `.compile-state.json` and treat the registry (not timestamps alone) as the source of truth.
+
 ### Knowledge mode (default)
 
-1. For each entry in `sources[]`, list all `.md` files using Glob
-2. Exclude any paths matching `exclude` patterns (e.g., the `wiki/` output directory itself)
-3. Read `.compile-state.json` from the output directory
-4. Compare file list against previous state to identify new or changed files
-5. On first run (no prior state), treat ALL files as new
+1. For each entry in `sources[]`, list all `.md` files (Glob), applying `exclude` patterns and symlink-aware resolution
+2. Build `current_files` = set of relative paths from vault root
+3. Read `.compile-state.json` → `processed_sources` map (path → `{topics, last_processed, content_hash}`)
+4. Build `known_files` = keys of `processed_sources`
+5. Compute three sets:
+   - **new** = `current_files - known_files` — files never processed
+   - **modified** = files in `current_files ∩ known_files` where mtime > `processed_sources[path].last_processed`, OR (if `content_hash` is tracked) sha256[:12] differs
+   - **deleted** = `known_files - current_files` — files in state but no longer on disk
+6. **First run** (no `.compile-state.json`): treat all `current_files` as new and bootstrap `processed_sources` from scratch in Phase 5
+7. **Migration from legacy state** (`.compile-state.json` exists but lacks `processed_sources`):
+   - For each topic article in `{output}/topics/*.md`, parse its `## Sources` section
+   - Extract wikilink targets matching `[[../../01-Sources/...]]`, `[[../../90-Inbox/...]]`, `[[../../wiki-sources/...]]` patterns
+   - Resolve each to a vault-relative path
+   - For each resolved path, append topic slug to a temporary `bootstrapped_processed` map
+   - Save `bootstrapped_processed` as `processed_sources` and treat `current_files - bootstrapped_processed.keys()` as the real new/orphan set
+   - This is a **one-time cost on upgrade** — no re-processing of already-ingested files
 
 ### Codebase mode
 
-1. For each entry in `sources[]`, scan for **knowledge files** matching `knowledge_files[]` patterns:
-   - Documentation: `README.md`, `CLAUDE.md`, `AGENTS.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`
-   - API contracts: `*.proto`, `*.graphql`, `openapi.yaml`, `openapi.json`
-   - Decision records: `ADR-*.md`, `docs/adr/*.md`
-   - Infrastructure: `docker-compose.yml`, `Dockerfile`, `k8s/*.yaml`
-   - Operations: `docs/runbooks/*.md`, `CHANGELOG.md`, `.env.example`
-2. If `deep_scan` is `true`, also scan for key source files per topic area:
-   - Entry points: `index.ts`, `main.py`, `main.go`, `lib.rs`, `App.swift`, etc.
-   - Type definitions: `types.ts`, `models.py`, `schema.prisma`, `*.proto`
-   - Config files: `package.json`, `tsconfig.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`
-   - Limit to ~20 source files per topic area to control token cost
-3. Exclude: `node_modules/`, `dist/`, `.git/`, `vendor/`, `__pycache__/`, `.build/`, `target/`, and configured `exclude` patterns
-4. Read `.compile-state.json` and compare to identify new or changed files
-5. On first run, treat ALL discovered files as new
+Same diff-based logic. `current_files` is built from `knowledge_files[]` patterns plus `deep_scan` extras when enabled. Exclude patterns apply.
+
+### Reporting after Phase 1
+
+Always print to user:
+
+```
+Source scan:
+  Current:   {count} files
+  Known:     {count} (from processed_sources)
+  New:       {count}
+  Modified:  {count}
+  Deleted:   {count}  (reported only; wiki references NOT auto-removed)
+```
+
+If **deleted** > 0, list paths and explicitly ask user before removing topic cross-references. Never silently strip back-references — a file might have been moved, not deleted.
 
 ## Phase 2: Classify and Discover Topics
 
@@ -304,18 +321,39 @@ Always regenerate INDEX.md, even if no topics changed (it's cheap).
 **Topics updated:** {list}
 **New topics:** {list or "none"}
 **Sources scanned:** {count}
-**Sources changed:** {count}
+**Sources new:** {count}
+**Sources modified:** {count}
+**Sources deleted (reported):** {count or "none"}
 ```
 
 2. **Compile state** — Update `{output}/.compile-state.json`:
+
 ```json
 {
-  "last_compiled": "{today's date}",
+  "last_compiled": "{today's date YYYY-MM-DD}",
+  "last_compiled_at": "{ISO 8601 timestamp with timezone, e.g. 2026-05-21T03:11:55+08:00}",
   "topics": ["{slug1}", "{slug2}", ...],
+  "concepts": ["{slug1}", "{slug2}", ...],
   "source_locations": ["{path1}", "{path2}", ...],
-  "total_sources_scanned": {count}
+  "total_sources_scanned": {count},
+  "processed_sources": {
+    "{relative-path-to-source.md}": {
+      "topics": ["{topic1}", "{topic2}"],
+      "last_processed": "{ISO 8601 timestamp}",
+      "content_hash": "{sha256[:12] — OPTIONAL; omit if not computed}"
+    }
+  }
 }
 ```
+
+**Update rules:**
+
+- **New file processed** → add a new key in `processed_sources` with full info
+- **Already-known file re-processed** → update `last_processed` (+ `content_hash` if tracked); **merge** new topic(s) into the existing `topics[]` array (don't overwrite — a file can accumulate cross-references across multiple compile runs)
+- **File in `processed_sources` but no longer on disk** (deleted set) → **leave entry intact** for audit; do NOT auto-purge in Phase 5. A future `/wiki-lint` cleanup pass handles archival/removal under user supervision.
+- `last_compiled_at` must include timezone (e.g., `+08:00`, `Z`). It's used by SessionStart hooks for stale detection and by humans during audit.
+
+**Critical invariant:** after Phase 5, the union of all `processed_sources[*].topics` should equal the union of wikilinks referenced in `{output}/topics/*.md`'s `## Sources` sections. Diverging means somebody (likely a manual edit or an aborted compile) broke the round-trip — `/wiki-lint` will catch this.
 
 ## Phase 6: Generate CONTEXT.md (codebase mode only, first run)
 
