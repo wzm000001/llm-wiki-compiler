@@ -46,8 +46,8 @@ Detects files that exist in source directories but were never ingested into any 
 **Algorithm:**
 
 1. Read `.compile-state.json` → `processed_sources` (path → `{topics, last_processed, content_hash}`)
-2. For each entry in `sources[]`, list all `.md` files (Glob, applying `exclude`)
-3. Build `current_files` = set of all relative paths
+2. For each entry in `sources[]`, list all `.md` files (Glob, applying `exclude`). **Critical: follow symlinks** via `find -L`, `os.walk(..., followlinks=True)`, or equivalent. Common pitfall: a source path like `01-Sources/x-bookmarks/` is often a symlink to an external bookmark directory (e.g., `~/.fieldtheory/library/bookmarks/`). Without symlink following, lint sees zero files inside and falsely reports every entry from that directory as a "dead state" entry.
+3. Build `current_files` = set of all relative paths (use symlink-relative paths, not resolved real paths, to match how wikilinks reference them in topic articles)
 4. Build `known_files` = keys of `processed_sources`
 5. **Orphan sources** = `current_files - known_files` — file exists on disk but not in registry
 6. **Broken back-references** = entries in `processed_sources` where the file's claimed `topics[]` don't all reference the file in their `## Sources` section (state thinks file is processed but topic article disagrees)
