@@ -56,8 +56,8 @@ The legacy detection used `find -newer last_compiled` which silently drops files
 
 ### Knowledge mode (default)
 
-1. For each entry in `sources[]`, list all `.md` files (Glob), applying `exclude` patterns and symlink-aware resolution
-2. Build `current_files` = set of relative paths from vault root
+1. For each entry in `sources[]`, list all `.md` files (Glob), applying `exclude` patterns. **Critical: follow symlinks** — many vaults symlink external bookmark directories (e.g., `~/.fieldtheory/library/bookmarks/`) into a source path. Use `find -L` semantics or `os.walk(..., followlinks=True)` / `Path.rglob` with manual symlink resolution. **Not following symlinks silently hides hundreds of source files** and produces false "dead state" entries for everything inside the symlink.
+2. Build `current_files` = set of relative paths from vault root. For files reached via symlink, use the *symlink-relative* path (e.g., `01-Sources/x-bookmarks/foo.md`), NOT the resolved real path (`~/.fieldtheory/library/bookmarks/foo.md`) — the symlink path is what wikilinks and topic articles reference.
 3. Read `.compile-state.json` → `processed_sources` map (path → `{topics, last_processed, content_hash}`)
 4. Build `known_files` = keys of `processed_sources`
 5. Compute three sets:
